@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+  <meta charset="UTF-8">
+  <title>Аукцион за картини</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      margin: 0;
+      padding: 20px;
+    }
+    header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    .auction-card {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 20px;
+      max-width: 500px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .auction-card img {
+      max-width: 100%;
+      border-radius: 5px;
+    }
+    .auction-card h2 {
+      margin-top: 10px;
+      margin-bottom: 10px;
+    }
+    .auction-card p {
+      margin: 5px 0;
+    }
+    .btn {
+      display: inline-block;
+      background: #3498db;
+      color: #fff;
+      padding: 10px 15px;
+      border-radius: 5px;
+      text-decoration: none;
+      margin-top: 10px;
+      cursor: pointer;
+    }
+    #qr-code {
+      margin-top: 20px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Аукцион за картини</h1>
+  <p>Наддавай анонимно – без регистрация!</p>
+</header>
+
+<div id="auction-container">
+  <!-- Тук ще се показват аукционните карти -->
+</div>
+
+<div id="qr-code">
+  <h3>QR код към тази страница</h3>
+  <div id="qrcode"></div>
+</div>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+
+<!-- QRCode.js Library -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+<script>
+  // 1. Firebase конфигурация – замени тези данни със своите!
+  const firebaseConfig = {
+  apiKey: "AIzaSyCjwTAl2XWv-jhGOnDvMjEsfEi4PIiaHbA",
+  authDomain: "auctionplatform-fb3a8.firebaseapp.com",
+  projectId: "auctionplatform-fb3a8",
+  storageBucket: "auctionplatform-fb3a8.firebasestorage.app",
+  messagingSenderId: "926599055223",
+  appId: "1:926599055223:web:ecce5aac4ccdda2dad4372",
+  measurementId: "G-JT5QCTBNRK"
+};
+
+  // Инициализация на Firebase
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+
+  // 2. Примерни данни за картина
+  // В Firebase ще имаме структура: /auctions/{auctionId}
+  // Ако няма данни, добавяме примерна картина
+  const auctionRef = db.ref('auctions');
+
+  auctionRef.once('value', snapshot => {
+    if (!snapshot.exists()) {
+      const sampleAuction = {
+        title: "Мълчаливият залез",
+        description: "Абстрактен залез, изрисуван с акрил върху платно. Размер: 40х50 см.",
+        image: "https://via.placeholder.com/500x300.png?text=Мълчаливият+залез",
+        startPrice: 70,
+        currentBid: 70
+      };
+      auctionRef.push(sampleAuction);
+    }
+  });
+
+  // 3. Функция за показване на аукционите
+  function renderAuctions() {
+    auctionRef.on('value', snapshot => {
+      const container = document.getElementById('auction-container');
+      container.innerHTML = ""; // Изчистване
+      snapshot.forEach(childSnapshot => {
+        const auction = childSnapshot.val();
+        const auctionId = childSnapshot.key;
+
+        // Създаваме картата за аукцион
+        const card = document.createElement('div');
+        card.className = "auction-card";
+        card.innerHTML = `
+          <img src="${auction.image}" alt="${auction.title}">
+          <h2>${auction.title}</h2>
+          <p>${auction.description}</p>
+          <p>Стартова цена: ${auction.startPrice} лв</p>
+          <p>Текуща оферта: <span id="bid-${auctionId}">${auction.currentBid}</span> лв</p>
+          <button class="btn" onclick="placeBid('${auctionId}', ${auction.currentBid})">Наддай сега</button>
+        `;
+        container.appendChild(card);
+      });
+    });
+  }
+
+  renderAuctions();
+
+  // 4. Функция за наддаване
+  function placeBid(auctionId, currentBid) {
+    let newBid = prompt("Въведи твоята оферта (текуща: " + currentBid + " лв):");
+    if (newBid) {
+      newBid = parseFloat(newBid);
+      if (newBid > currentBid) {
+        db.ref('auctions/' + auctionId).update({
+          currentBid: newBid
+        });
+      } else {
+        alert("Офертата трябва да е по-висока от текущата!");
+      }
+    }
+  }
+
+  // 5. Генериране на QR код за текущата страница
+  const currentUrl = window.location.href;
+  new QRCode(document.getElementById("qrcode"), {
+    text: currentUrl,
+    width: 128,
+    height: 128
+  });
+</script>
+
+</body>
+</html>
